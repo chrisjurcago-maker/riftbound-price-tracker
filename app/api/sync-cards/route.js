@@ -52,7 +52,7 @@ export async function POST() {
       public_code:      card.publicCode,
       set_id:           card.set    ?? '',
       set_label:        card.setName ?? '',
-      rarity:           card.rarity?.value?.label ?? card.rarity?.label ?? null,
+      rarity:           card.rarity?.value?.label ?? null,
       card_type:        extractLabels(card.cardType),
       domain:           extractLabels(card.domains),
       energy:           typeof card.energy === 'number' ? card.energy : null,
