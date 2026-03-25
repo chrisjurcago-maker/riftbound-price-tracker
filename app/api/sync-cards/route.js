@@ -4,12 +4,14 @@ import { createClient } from '@supabase/supabase-js'
 
 const GALLERY_URL = 'https://riftbound.leagueoflegends.com/en-us/card-gallery/'
 
-// Handles both flat arrays [{label}] and nested {value: [{label}]} structures
-function extractLabels(field) {
+// Extracts label(s) from a field regardless of which array key is used
+function extractLabels(field, ...keys) {
   if (!field) return null
-  const arr = Array.isArray(field) ? field : Array.isArray(field.value) ? field.value : null
-  if (arr) return arr.map(x => x.label).join(', ') || null
-  return field.value?.label ?? field.label ?? null
+  if (Array.isArray(field)) return field.map(x => x.label).join(', ') || null
+  for (const key of keys) {
+    if (Array.isArray(field[key])) return field[key].map(x => x.label).join(', ') || null
+  }
+  return null
 }
 
 export async function POST() {
@@ -53,8 +55,8 @@ export async function POST() {
       set_id:           card.set    ?? '',
       set_label:        card.setName ?? '',
       rarity:           card.rarity?.value?.label ?? null,
-      card_type:        extractLabels(card.cardType),
-      domain:           extractLabels(card.domains),
+      card_type:        extractLabels(card.cardType, 'type', 'value', 'values'),
+      domain:           extractLabels(card.domain ?? card.domains, 'values', 'value', 'type'),
       energy:           typeof card.energy === 'number' ? card.energy : null,
       power:            typeof card.power  === 'number' ? card.power  : null,
       image_url:        card.cardImage?.url ?? null,
