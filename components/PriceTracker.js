@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -25,11 +26,17 @@ const C = {
 const SETS       = ['All Sets', 'Origins', 'Spiritforged', 'Special']
 const CATEGORIES = ['All Categories', 'Booster Box', 'Booster Pack', 'Champion Deck',
                     'Starter Box', 'Playmat', 'Card Sleeves', 'Limited Bundle']
-const WINDOWS    = [{ label: '1 Month', months: 1 }, { label: '3 Months', months: 3 }, { label: '6 Months', months: 6 }]
+const WINDOWS    = [
+  { label: '1 Day',    months: null },
+  { label: '1 Week',   months: null },
+  { label: '1 Month',  months: 1 },
+  { label: '3 Months', months: 3 },
+  { label: '6 Months', months: 6 },
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getPricesForWindow(priceHistory, allLabels, windowMonths) {
-  const sliced = allLabels.slice(-windowMonths)
+  const sliced = windowMonths === null ? allLabels.slice(-2) : allLabels.slice(-windowMonths)
   return sliced.map(label => {
     const row = priceHistory.find(r => r.month_label === label)
     return { month: label, price: row?.market_price ?? null }
@@ -37,6 +44,7 @@ function getPricesForWindow(priceHistory, allLabels, windowMonths) {
 }
 
 function getTrend(priceHistory, allLabels, windowMonths) {
+  if (windowMonths === null) return null
   const data = getPricesForWindow(priceHistory, allLabels, windowMonths).filter(d => d.price !== null)
   if (data.length < 2) return null
   const first = data[0].price
@@ -97,7 +105,9 @@ function CustomTooltip({ active, payload, label, msrp }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PriceTracker({ products, monthLabels }) {
-  const [windowIdx,  setWindowIdx]  = useState(2)
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [windowIdx,  setWindowIdx]  = useState(4)
   const [filterSet,  setFilterSet]  = useState('All Sets')
   const [filterCat,  setFilterCat]  = useState('All Categories')
   const [search,     setSearch]     = useState('')
@@ -105,7 +115,8 @@ export default function PriceTracker({ products, monthLabels }) {
   const [sortCol,    setSortCol]    = useState('name')
   const [sortDir,    setSortDir]    = useState(1)
 
-  const windowMonths = WINDOWS[windowIdx].months
+  const windowMonths   = WINDOWS[windowIdx].months
+  const isSubMonthly   = windowMonths === null
 
   // ── filtered + sorted rows ─────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -180,6 +191,22 @@ export default function PriceTracker({ products, monthLabels }) {
         background: C.mid, padding: '12px 28px', borderBottom: '1px solid #2a2a4a',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
+        <button
+          onClick={() => startTransition(() => router.refresh())}
+          disabled={isPending}
+          title="Refresh prices"
+          style={{
+            background: isPending ? C.accent : C.dark,
+            color: isPending ? C.gray : C.gold,
+            border: `1px solid ${C.gold}`, borderRadius: 20, padding: '6px 14px',
+            fontWeight: 700, fontSize: 13, cursor: isPending ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, transition: 'opacity 0.2s',
+          }}
+        >
+          <span style={{ display: 'inline-block', animation: isPending ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+          {isPending ? 'Refreshing…' : 'Refresh'}
+        </button>
+
         <span style={{ color: C.gray, fontSize: 13, fontWeight: 600 }}>TIME WINDOW:</span>
         {WINDOWS.map((w, i) => (
           <button key={w.label} onClick={() => setWindowIdx(i)} style={{
@@ -229,7 +256,7 @@ export default function PriceTracker({ products, monthLabels }) {
                   [null,     'Status'],
                   ['msrp',   'MSRP'],
                   ['market', 'Market Price'],
-                  ['trend',  `${WINDOWS[windowIdx].label} Trend`],
+                  ['trend',  isSubMonthly ? 'Trend' : `${WINDOWS[windowIdx].label} Trend`],
                   [null,     'vs MSRP'],
                 ].map(([col, label]) => (
                   <th key={label} style={th(col)} onClick={() => col && toggleSort(col)}>
@@ -259,7 +286,11 @@ export default function PriceTracker({ products, monthLabels }) {
                     <td style={td({ fontWeight: 700, color: market ? C.white : C.gray })}>
                       {market ? `$${Number(market).toFixed(2)}` : '—'}
                     </td>
-                    <td style={td()}><TrendBadge pct={trend} /></td>
+                    <td style={td()}>
+                      {isSubMonthly
+                        ? <span style={{ color: C.gray, fontSize: 11 }} title="Sub-monthly data not tracked">—</span>
+                        : <TrendBadge pct={trend} />}
+                    </td>
                     <td style={td()}>
                       {vsMsrp !== null
                         ? <span style={{ color: parseFloat(vsMsrp) > 5 ? C.green : parseFloat(vsMsrp) < -5 ? C.red : C.orange, fontWeight: 600, fontSize: 12 }}>
