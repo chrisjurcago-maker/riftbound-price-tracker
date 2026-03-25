@@ -45,7 +45,15 @@ function getPricesForWindow(priceHistory, allLabels, windowMonths) {
 
 function getTrend(priceHistory, allLabels, windowMonths) {
   if (windowMonths === null) return null
-  const data = getPricesForWindow(priceHistory, allLabels, windowMonths).filter(d => d.price !== null)
+  // Slice one extra month back so we always have a "from" point to compare against.
+  // e.g. "1 Month" compares previous month → current month.
+  const sliced = allLabels.slice(-(windowMonths + 1))
+  const data = sliced
+    .map(label => {
+      const row = priceHistory.find(r => r.month_label === label)
+      return { month: label, price: row?.market_price ?? null }
+    })
+    .filter(d => d.price !== null)
   if (data.length < 2) return null
   const first = data[0].price
   const last  = data[data.length - 1].price
