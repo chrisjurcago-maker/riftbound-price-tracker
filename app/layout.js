@@ -1,0 +1,14 @@
+import './globals.css'
+
+export const metadata = {
+  title: 'Riftbound TCG — Price Tracker',
+  description: 'Track secondary market price trends for Riftbound TCG sealed products and accessories.',
+}
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  )
+}
