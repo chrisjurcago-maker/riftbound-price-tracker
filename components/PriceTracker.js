@@ -153,9 +153,13 @@ export default function PriceTracker({ products, monthLabels }) {
   // ── chart data for selected product ───────────────────────────────────────
   const chartData = useMemo(() => {
     if (!selectedProduct) return []
-    return getPricesForWindow(selectedProduct.priceHistory, monthLabels, windowMonths)
+    return monthLabels
+      .map(label => {
+        const row = selectedProduct.priceHistory.find(r => r.month_label === label)
+        return { month: label, price: row?.market_price ?? null }
+      })
       .filter(d => d.price !== null)
-  }, [selectedProduct, monthLabels, windowMonths])
+  }, [selectedProduct, monthLabels])
 
   function toggleSort(col) {
     if (sortCol === col) setSortDir(d => -d)
