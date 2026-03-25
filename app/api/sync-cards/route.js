@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@supabase/supabase-js'
 
 const GALLERY_URL = 'https://riftbound.leagueoflegends.com/en-us/card-gallery/'
@@ -62,6 +63,7 @@ export async function POST() {
 
     if (error) throw error
 
+    revalidatePath('/cards')
     return NextResponse.json({ success: true, synced: cards.length })
   } catch (err) {
     console.error('Card sync error:', err)
