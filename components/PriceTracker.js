@@ -139,7 +139,7 @@ export default function PriceTracker({ products, monthLabels }) {
         if (sortCol === 'name')   return sortDir * a.name.localeCompare(b.name)
         if (sortCol === 'msrp')   return sortDir * (a.msrp - b.msrp)
         if (sortCol === 'market') return sortDir * ((latestPrice(a.priceHistory) ?? 0) - (latestPrice(b.priceHistory) ?? 0))
-        if (sortCol === 'trend')  {
+        if (sortCol === 'trend') {
           const at = getTrend(a.priceHistory, monthLabels, windowMonths) ?? -999
           const bt = getTrend(b.priceHistory, monthLabels, windowMonths) ?? -999
           return sortDir * (at - bt)
@@ -147,6 +147,14 @@ export default function PriceTracker({ products, monthLabels }) {
         return 0
       })
   }, [products, filterSet, filterCat, search, sortCol, sortDir, windowMonths, monthLabels])
+
+  // ── group filtered rows by category in defined order ──────────────────────
+  const grouped = useMemo(() => {
+    return CATEGORIES
+      .filter(c => c !== 'All Categories')
+      .map(cat => ({ cat, items: filtered.filter(p => p.category === cat) }))
+      .filter(g => g.items.length > 0)
+  }, [filtered])
 
   const selectedProduct = selected ? products.find(p => p.id === selected) : null
 
@@ -264,7 +272,6 @@ export default function PriceTracker({ products, monthLabels }) {
                 {[
                   ['name',   'Product'],
                   [null,     'Set'],
-                  [null,     'Category'],
                   [null,     'Status'],
                   ['msrp',   'MSRP'],
                   ['market', 'Market Price'],
@@ -278,45 +285,56 @@ export default function PriceTracker({ products, monthLabels }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => {
-                const market  = latestPrice(p.priceHistory)
-                const trend   = getTrend(p.priceHistory, monthLabels, windowMonths)
-                const vsMsrp  = market ? (((market - p.msrp) / p.msrp) * 100).toFixed(1) : null
-                const isSel   = selected === p.id
-                const rowBg   = isSel ? C.rowSel : i % 2 === 0 ? C.row1 : C.row2
-
-                return (
-                  <tr key={p.id} onClick={() => setSelected(isSel ? null : p.id)} style={{
-                    background: rowBg, cursor: 'pointer',
-                    borderLeft: isSel ? `3px solid ${C.gold}` : '3px solid transparent',
-                  }}>
-                    <td style={td({ fontWeight: isSel ? 700 : 400, color: isSel ? C.gold : C.white })}>{p.name}</td>
-                    <td style={td({ color: C.gray, whiteSpace: 'nowrap' })}>{p.set_name}</td>
-                    <td style={td({ color: C.gray, whiteSpace: 'nowrap' })}>{p.category}</td>
-                    <td style={td()}><StatusBadge status={p.status} /></td>
-                    <td style={td({ color: C.white })}>${Number(p.msrp).toFixed(2)}</td>
-                    <td style={td({ fontWeight: 700, color: market ? C.white : C.gray })}>
-                      {market ? `$${Number(market).toFixed(2)}` : '—'}
-                    </td>
-                    <td style={td()}>
-                      {isSubMonthly
-                        ? <span style={{ color: C.gray, fontSize: 11 }} title="Sub-monthly data not tracked">—</span>
-                        : <TrendBadge pct={trend} />}
-                    </td>
-                    <td style={td()}>
-                      {vsMsrp !== null
-                        ? <span style={{ color: parseFloat(vsMsrp) > 5 ? C.green : parseFloat(vsMsrp) < -5 ? C.red : C.orange, fontWeight: 600, fontSize: 12 }}>
-                            {parseFloat(vsMsrp) > 0 ? '+' : ''}{vsMsrp}%
-                          </span>
-                        : <span style={{ color: C.gray }}>—</span>
-                      }
+              {grouped.map(({ cat, items }) => (
+                <>
+                  <tr key={`cat-${cat}`}>
+                    <td colSpan={7} style={{
+                      padding: '10px 14px', background: C.accent,
+                      color: C.gold, fontWeight: 700, fontSize: 12,
+                      letterSpacing: 1, borderTop: `2px solid ${C.gold}`,
+                      borderBottom: `1px solid #2a2a5a`,
+                    }}>
+                      {cat.toUpperCase()}
                     </td>
                   </tr>
-                )
-              })}
+                  {items.map((p, i) => {
+                    const market = latestPrice(p.priceHistory)
+                    const trend  = getTrend(p.priceHistory, monthLabels, windowMonths)
+                    const vsMsrp = market ? (((market - p.msrp) / p.msrp) * 100).toFixed(1) : null
+                    const isSel  = selected === p.id
+                    const rowBg  = isSel ? C.rowSel : i % 2 === 0 ? C.row1 : C.row2
+                    return (
+                      <tr key={p.id} onClick={() => setSelected(isSel ? null : p.id)} style={{
+                        background: rowBg, cursor: 'pointer',
+                        borderLeft: isSel ? `3px solid ${C.gold}` : '3px solid transparent',
+                      }}>
+                        <td style={td({ fontWeight: isSel ? 700 : 400, color: isSel ? C.gold : C.white })}>{p.name}</td>
+                        <td style={td({ color: C.gray, whiteSpace: 'nowrap' })}>{p.set_name}</td>
+                        <td style={td()}><StatusBadge status={p.status} /></td>
+                        <td style={td({ color: C.white })}>${Number(p.msrp).toFixed(2)}</td>
+                        <td style={td({ fontWeight: 700, color: market ? C.white : C.gray })}>
+                          {market ? `$${Number(market).toFixed(2)}` : '—'}
+                        </td>
+                        <td style={td()}>
+                          {isSubMonthly
+                            ? <span style={{ color: C.gray, fontSize: 11 }} title="Sub-monthly data not tracked">—</span>
+                            : <TrendBadge pct={trend} />}
+                        </td>
+                        <td style={td()}>
+                          {vsMsrp !== null
+                            ? <span style={{ color: parseFloat(vsMsrp) > 5 ? C.green : parseFloat(vsMsrp) < -5 ? C.red : C.orange, fontWeight: 600, fontSize: 12 }}>
+                                {parseFloat(vsMsrp) > 0 ? '+' : ''}{vsMsrp}%
+                              </span>
+                            : <span style={{ color: C.gray }}>—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </>
+              ))}
             </tbody>
           </table>
-          {filtered.length === 0 && (
+          {grouped.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.gray }}>No products match your filters.</div>
           )}
         </div>
