@@ -84,27 +84,32 @@ export async function POST(request) {
 
   if (cErr || !card) return NextResponse.json({ error: 'Card not found' }, { status: 404 })
 
-  // Search eBay for sold listings
-  const price = await fetchEbayPrice(appId, card.name, card.set_label)
+  try {
+    // Search eBay for sold listings
+    const price = await fetchEbayPrice(appId, card.name, card.set_label)
 
-  if (price === null) {
-    return NextResponse.json({ found: false, cardId, message: 'No sold listings found on eBay' })
+    if (price === null) {
+      return NextResponse.json({ found: false, cardId, message: 'No sold listings found on eBay' })
+    }
+
+    const rounded = Math.round(price * 100) / 100
+
+    // Upsert into card_price_history for current month
+    const { error: uErr } = await supabase
+      .from('card_price_history')
+      .upsert({
+        card_id:      cardId,
+        month_label:  currentMonthLabel(),
+        month_date:   currentMonthDate(),
+        market_price: rounded,
+      }, { onConflict: 'card_id,month_date' })
+
+    if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 })
+
+    revalidatePath('/cards')
+    return NextResponse.json({ found: true, cardId, price: rounded })
+  } catch (err) {
+    console.error('eBay fetch error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
-
-  const rounded = Math.round(price * 100) / 100
-
-  // Upsert into card_price_history for current month
-  const { error: uErr } = await supabase
-    .from('card_price_history')
-    .upsert({
-      card_id:      cardId,
-      month_label:  currentMonthLabel(),
-      month_date:   currentMonthDate(),
-      market_price: rounded,
-    }, { onConflict: 'card_id,month_date' })
-
-  if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 })
-
-  revalidatePath('/cards')
-  return NextResponse.json({ found: true, cardId, price: rounded })
 }
