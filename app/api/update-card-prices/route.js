@@ -22,13 +22,10 @@ async function fetchEbayPrice(appId, cardName, setLabel) {
     '&paginationInput.entriesPerPage=10',
   ].join('')
 
-  const res    = await fetch(url, { cache: 'no-store' })
-  const rlogid = res.headers.get('x-ebay-c-tracking') ?? res.headers.get('rlogid') ?? 'not found'
-  const text   = await res.text()
+  const res  = await fetch(url, { cache: 'no-store' })
+  const text = await res.text()
 
-  console.log('eBay rlogid:', rlogid)
-  if (!res.ok) throw new Error(`eBay API error ${res.status} (rlogid: ${rlogid}): ${text.slice(0, 300)}`)
-  if (!text)   throw new Error('eBay API returned empty response')
+  if (!text) throw new Error('eBay API returned empty response')
 
   let data
   try {
@@ -36,6 +33,11 @@ async function fetchEbayPrice(appId, cardName, setLabel) {
   } catch {
     throw new Error(`eBay API returned non-JSON: ${text.slice(0, 200)}`)
   }
+
+  const rlogId = data?.rlogId ?? 'not found'
+  console.log('eBay rlogId:', rlogId)
+
+  if (!res.ok) throw new Error(`eBay API error ${res.status} | rlogId: ${rlogId} | ${text.slice(0, 300)}`)
 
   const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item ?? []
   const prices = items
