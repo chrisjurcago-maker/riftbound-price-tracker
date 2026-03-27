@@ -112,6 +112,8 @@ export default function CardTracker({ cards, monthLabels }) {
   const [filterDom,  setFilterDom]    = useState('All Domains')
   const [selected,   setSelected]     = useState(null)
   const [sortCol,    setSortCol]      = useState('collector_number')
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [priceStatus,  setPriceStatus]  = useState(null)
   const [sortDir,    setSortDir]      = useState(1)
   const [syncStatus, setSyncStatus]   = useState(null)
   const [syncing,    setSyncing]      = useState(false)
@@ -190,6 +192,30 @@ export default function CardTracker({ cards, monthLabels }) {
       setSyncStatus(`Error: ${err.message}`)
     } finally {
       setSyncing(false)
+    }
+  }
+
+  async function handleUpdatePrice(cardId) {
+    setPriceLoading(true)
+    setPriceStatus(null)
+    try {
+      const res  = await fetch('/api/update-card-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      if (!data.found) {
+        setPriceStatus('No eBay listings found')
+      } else {
+        setPriceStatus(`Updated: $${data.price.toFixed(2)}`)
+        startTransition(() => router.refresh())
+      }
+    } catch (err) {
+      setPriceStatus(`Error: ${err.message}`)
+    } finally {
+      setPriceLoading(false)
     }
   }
 
@@ -344,7 +370,7 @@ export default function CardTracker({ cards, monthLabels }) {
                   const isSel  = selected === c.id
                   const rowBg  = isSel ? C.rowSel : i % 2 === 0 ? C.row1 : C.row2
                   return (
-                    <tr key={c.id} onClick={() => setSelected(isSel ? null : c.id)} style={{
+                    <tr key={c.id} onClick={() => { setSelected(isSel ? null : c.id); setPriceStatus(null) }} style={{
                       background: rowBg, cursor: 'pointer',
                       borderLeft: isSel ? `3px solid ${C.gold}` : '3px solid transparent',
                     }}>
@@ -394,6 +420,28 @@ export default function CardTracker({ cards, monthLabels }) {
                   </div>
                 </div>
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: C.gray, fontSize: 18, cursor: 'pointer' }}>✕</button>
+              </div>
+
+              {/* eBay price update */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <button
+                  onClick={() => { setPriceStatus(null); handleUpdatePrice(selectedCard.id) }}
+                  disabled={priceLoading}
+                  style={{
+                    background: priceLoading ? C.accent : C.gold, color: priceLoading ? C.gray : C.dark,
+                    border: 'none', borderRadius: 16, padding: '6px 14px',
+                    fontWeight: 700, fontSize: 12, cursor: priceLoading ? 'default' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <span style={{ animation: priceLoading ? 'spin 1s linear infinite' : 'none', display: 'inline-block' }}>⟳</span>
+                  {priceLoading ? 'Fetching…' : 'Get eBay Price'}
+                </button>
+                {priceStatus && (
+                  <span style={{ fontSize: 12, color: priceStatus.startsWith('Error') || priceStatus.startsWith('No') ? C.orange : C.green }}>
+                    {priceStatus}
+                  </span>
+                )}
               </div>
 
               {/* Card image */}
