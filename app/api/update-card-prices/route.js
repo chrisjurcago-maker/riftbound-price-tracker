@@ -22,10 +22,12 @@ async function fetchEbayPrice(appId, cardName, setLabel) {
     '&paginationInput.entriesPerPage=10',
   ].join('')
 
-  const res  = await fetch(url, { cache: 'no-store' })
-  const text = await res.text()
+  const res    = await fetch(url, { cache: 'no-store' })
+  const rlogid = res.headers.get('x-ebay-c-tracking') ?? res.headers.get('rlogid') ?? 'not found'
+  const text   = await res.text()
 
-  if (!res.ok) throw new Error(`eBay API error ${res.status}: ${text.slice(0, 200)}`)
+  console.log('eBay rlogid:', rlogid)
+  if (!res.ok) throw new Error(`eBay API error ${res.status} (rlogid: ${rlogid}): ${text.slice(0, 300)}`)
   if (!text)   throw new Error('eBay API returned empty response')
 
   let data
