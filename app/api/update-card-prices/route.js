@@ -22,9 +22,18 @@ async function fetchEbayPrice(appId, cardName, setLabel) {
     '&paginationInput.entriesPerPage=10',
   ].join('')
 
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`eBay API error: ${res.status}`)
-  const data = await res.json()
+  const res  = await fetch(url, { cache: 'no-store' })
+  const text = await res.text()
+
+  if (!res.ok) throw new Error(`eBay API error ${res.status}: ${text.slice(0, 200)}`)
+  if (!text)   throw new Error('eBay API returned empty response')
+
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error(`eBay API returned non-JSON: ${text.slice(0, 200)}`)
+  }
 
   const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item ?? []
   const prices = items
