@@ -140,6 +140,8 @@ export default function CardTracker({ cards, monthLabels }) {
         if (sortCol === 'name')             return sortDir * a.name.localeCompare(b.name)
         if (sortCol === 'collector_number') return sortDir * (a.collector_number - b.collector_number)
         if (sortCol === 'rarity')           return sortDir * ((RARITY_ORDER[a.rarity] ?? 9) - (RARITY_ORDER[b.rarity] ?? 9))
+        if (sortCol === 'card_type')         return sortDir * (a.card_type ?? '').localeCompare(b.card_type ?? '')
+        if (sortCol === 'domain')           return sortDir * (a.domain    ?? '').localeCompare(b.domain    ?? '')
         if (sortCol === 'energy')           return sortDir * ((a.energy ?? 99) - (b.energy ?? 99))
         if (sortCol === 'market') {
           return sortDir * ((latestPrice(a.priceHistory) ?? 0) - (latestPrice(b.priceHistory) ?? 0))
@@ -323,8 +325,8 @@ export default function CardTracker({ cards, monthLabels }) {
                     ['name',             'Card Name' ],
                     [null,               'Set'       ],
                     ['rarity',           'Rarity'    ],
-                    [null,               'Type'      ],
-                    [null,               'Domain'    ],
+                    ['card_type',        'Type'      ],
+                    ['domain',           'Domain'    ],
                     ['energy',           'Cost'      ],
                     ['market',           'Market Price'],
                     ['trend',            isSubMonthly ? 'Trend' : `${WINDOWS[windowIdx].label} Trend`],
