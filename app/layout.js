@@ -1,5 +1,6 @@
 import './globals.css'
 import Nav from '../components/Nav'
+import { Analytics } from '@vercel/analytics/react'
 
 export const metadata = {
   title: 'Riftbound TCG — Price Tracker',
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
       <body>
         <Nav />
         {children}
+        <Analytics />
       </body>
     </html>
   )
