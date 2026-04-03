@@ -1,6 +1,6 @@
 import './globals.css'
 import Nav from '../components/Nav'
-import { Analytics } from '@vercel/analytics/react'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata = {
   title: 'Riftbound TCG — Price Tracker',
